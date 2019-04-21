@@ -1,0 +1,34 @@
+import Vue from 'vue'
+import Router from 'vue-router'
+import HelloWorld from '@/components/HelloWorld'
+import HelloVue from '@/components/day01/HelloVue'
+import Login from '@/components/login/Login'
+
+Vue.use(Router)
+
+export default new Router({
+    mode:'history',
+    routes: [
+    {
+        path:'/',
+        name:'App',
+        component:Login,
+        children:[
+            {
+                path:'',
+                component:r=>require.ensure([],()=>(require('../components/login/Login')),'login')
+             },
+            {
+                path:'/helloworld',
+                component:r=>require.ensure([],()=>(require('../components/HelloWorld')),'home')
+                }
+
+        ]
+        },
+    {
+        path:'/vue',
+        name:'HelloVue',
+        component:HelloVue
+    }
+  ]
+})

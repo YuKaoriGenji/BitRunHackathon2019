@@ -51,13 +51,15 @@
                         this.$message.error('请输入密码');
                         return;
                     }
+                    var sell_Itermid=null;
                     let private_key=this.password;
                     let account_name=this.userName;
                     let client=GXClientFactory.instance({keyProvider:private_key,account:account_name,network:"https://testnet.gxchain.org"});
                     if(1){
                         console.log(client);
                         this.$cookies.set('User',{account_name,private_key});
-                        router.push({path:'/vue',name:'Home',params:{account:account_name,key:private_key}})
+                        this.$cookies.set('Sell',{sell_Itermid});
+                        router.push({path:'/vue',name:'Home',params:{account:account_name,key:private_key,sell_Itermid:null}})
                     }
                     else{
                         console.log("fail");

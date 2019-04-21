@@ -14,11 +14,8 @@
         <br>
         <!--搜索框-->
         <el-row>
-            <el-col :span="3" class="grid">
-                <el-input v-model="input" placeholder="请输入内容" size="mini"></el-input>
-            </el-col>
             <el-col :span="1" class="grid">
-                <el-button type="success" icon="el-icon-search" size="mini">搜索</el-button>
+                <el-button @click=register() type="success" icon="el-icon-search" size="mini">注册</el-button>
             </el-col>
         </el-row>
         <br>
@@ -41,23 +38,27 @@
 
             <el-table-column label="primary" width="100">
                 <template slot-scope="scope">
-                    <el-button type="description" icon="el-icon-edit" size="mini">详情</el-button>
+                    <el-button @click=participate(scope.$index,scope.row) type="description" icon="el-icon-edit" size="mini">参与</el-button>
                 </template>
             </el-table-column>
             <el-table-column label="danger" width="100">
                 <template slot-scope="scope">
-                    <el-button v-on:click="pay" type="danger" icon="el-icon-delete" size="mini">出价</el-button>
+                 <el-input v-model="scope.row.buy" placeholder="请输入内容" size="mini"></el-input>
+                    <el-button @click=pay(scope.$index,scope.row) type="danger" icon="el-icon-delete" size="mini">出价</el-button>
+                    <el-button @click=transac(scope.$index,scope.row) type="danger" icon="el-icon-delete" size="mini">付款</el-button>
                 </template>
             </el-table-column>
         </el-table>
         <br>
         <!--新增按钮-->
-        <el-col :span="1" class="grid">
-            <el-button type="sell" icon="el-icon-circle-plus-outline" size="mini" round>出售</el-button>
+        <el-input v-model="sell" placeholder="最低报价" maxlength=10000 style="width:100px"></el-input>
+        <el-input v-model="name" placeholder="商品名称" maxlength=10000 style="width:100px"></el-input>
+        <el-col :span="10" >
+            <el-button @click=display() type="sell" icon="el-icon-circle-plus-outline" size="mini" round>出售</el-button>
         </el-col>
         <!--全删按钮-->
-        <el-col :span="1" class="grid">
-            <el-button type="transaction" icon="el-icon-delete" size="mini" round>交易</el-button>
+        <el-col:span="1" class="grid">
+        <el-button @click=finish() type="transaction" size="mini" round>交货与收款</el-button>
         </el-col>
         <br>
         <!--分页条-->
@@ -73,7 +74,13 @@ Vue.use(VueCookies);
 let account_name_fake='hmmm123';
 let private_key_fake='5KP7TdSYBoSAfoK4Kf5dsfCkGGovHzEMbycFLF7uiW6W73zt26c4';
 var cookie=null
+var contractName='auction8'
+var broadcast=true;
+var account_ID=null;
+var sell_Itermid=null;
+var credit=null;
 var arrItem=new Array();
+var examItem=new Array();
     export default {
             data() {
                 return {
@@ -87,21 +94,21 @@ var arrItem=new Array();
                             price: '2016-05-04',
                             name: '王小虎',
                             last_time: '上海市普陀区金沙江路 1517 弄',
-                        is_bought:'已出售'
+                            is_bought:'已出售'
                             }, {
                                 price: '2016-05-01',
                                 name: '王小虎',
                                 last_time: '上海市普陀区金沙江路 1519 弄',
-                        is_bought:'已出售'
+                                is_bought:'已出售'
                                 }, {
                                     price: '2016-05-03',
                                     name: '王小虎',
                                     last_time: '上海市普陀区金沙江路 1516 弄',
-                        is_bought:'已出售'
+                                    is_bought:'已出售'
                                     },{price:3432532,
                                         name:'banana',
                                         last_time:'2019',
-                        is_bought:'已出售'
+                                        is_bought:'已出售'
                                         }],
                                     //查询输入框数据
                                     input: '',
@@ -116,15 +123,14 @@ var arrItem=new Array();
             created:function(){
                 var router=this.$router;
                 var broadcast=true;
-                alert("beginning");
                 cookie=this.$cookies.get('User');
+                sell_Itermid=this.$cookies.get('Sell');
                 console.log(cookie);
                 console.log(cookie.account_name);
                 console.log(cookie.private_key);
                 let client=GXClientFactory.instance({keyProvider:cookie.private_key,account:cookie.account_name,network:"wss://testnet.gxchain.org"});
                 if(!client.connected)
                 {
-                    alert("wrong wrong wrong wrong wrong")
                     // router.push({path:'/',name:'Login'})
 
                     }
@@ -132,20 +138,41 @@ var arrItem=new Array();
                     for(var i=0;result[i]!=null;i++)
                     {
                         arrItem[i]=result[i]
+                        examItem[i%5]=arrItem[i]
 
-                        this.tableData[i].price=arrItem[i].final_price;
+                        this.tableData[i%5].price=arrItem[i].final_price;
 
-                        this.tableData[i].name=arrItem[i].name;
+                        this.tableData[i%5].name=arrItem[i].name;
 
-                    this.tableData[i].last_time=arrItem[i].last_pushtime;
-                    if (arrItem[i].status==5){
-                        this.tableData[i].is_bought='已出售'
-                        }else{this.tableData[i].is_bought='未出售'}
-                    }
-                    
-            console.log("arrItem:",arrItem);
-            }
-                    )
+                        this.tableData[i%5].last_time=arrItem[i].last_pushtime;
+                        this.tableData[i%5].itermid=arrItem[i].itermid;
+                        if (arrItem[i].status==5){
+                            this.tableData[i%5].is_bought='已出售'
+                            }else{this.tableData[i%5].is_bought='未出售'}
+                        }
+                    client.getAccount(cookie.account_name).then(info=>{
+                        console.log("acount's info",info);
+                        account_ID=info.id;
+                        });
+                    console.log("arrItem:",arrItem);
+
+                    client.getTableObjects("auction8","personlist").then(people=>{console.log("person",people)
+                        var id_tmp=parseInt(account_ID.substr(4,4))
+                        for(var i=0;people[i]!=null;i++)
+                        {
+                            if(id_tmp==people[i].personid)
+                            {
+                                credit=people[i].credit;
+                                break;
+                                }
+
+
+                            }
+                        })
+
+                    })
+
+
                 },
             methods: {
                     handleSelect(key, keyPath) {
@@ -159,9 +186,83 @@ var arrItem=new Array();
                         //this.account=router_account
                         alert(router_account);
                         },
-                    pay:function(event){
-                        console.log("test:",this.tableData.price);
-                        }
+                    register(){
+                        let client=GXClientFactory.instance({keyProvider:cookie.private_key,account:cookie.account_name,network:"wss://testnet.gxchain.org"})
+                        client.callContract(contractName,"signin",{},null,broadcast)
+
+
+                        },
+
+
+
+                    participate(index,row){
+                        let client=GXClientFactory.instance({keyProvider:cookie.private_key,account:cookie.account_name,network:"wss://testnet.gxchain.org"});
+                        console.log("test:",this.tableData[index].itermid,row.buy);
+                        client.callContract(contractName,"joinrequest", {itermid:this.tableData[index].itermid}, null, broadcast)
+
+                        },
+
+
+
+                    display(){console.log("test23:",this.sell,this.name)
+                        let client=GXClientFactory.instance({keyProvider:cookie.private_key,account:cookie.account_name,network:"wss://testnet.gxchain.org"});
+                        console.log(cookie.private_key);
+                        client.callContract(contractName,"verifyseller",{min_price:this.sell,name:this.name,discreption:"123123123"},null,true).then(seller=>{console.log("seller:",seller);
+                        client.getTableObjects("auction8", "pubiterm").then(result=>{console.log("result:",result)
+
+                        for(var i=0;result[i]!=null;i++){
+                            if(result[i].name==this.name){
+                                sell_Itermid=result[i].itermid;
+                                console.log('sell_Itermid');
+                                break;
+                                }
+                            this.$cookies.set('Sell',{sell_Itermid});
+                            }//得到itermid
+                        client.callContract(contractName,"paydeposit",{itermid:sell_Itermid},"1 GXC",broadcast)//支付押金
+                       })
+                        } )
+                        },
+
+
+                    transac(index,row){
+                            var ItemList=new Array();
+                            var ExamTable=new Array();
+
+                    	 let client=GXClientFactory.instance({keyProvider:cookie.private_key,account:cookie.account_name,network:"wss://testnet.gxchain.org"});
+
+			 client.getTableObjects("auction8", "pubiterm").then(result=>{console.log("result:",result)
+                 for(var i=0;result[i]!=null;i++){
+                     ItemList[i]=result[i]
+                        ExamTable[i%5]=ItemList[i]
+
+                     }
+                 var money=(parseInt(ExamTable[index].final_price)/100000+0.01).toString()+" GXC"
+                     console.log("money:",money)
+                 client.callContract(contractName,"submitmoney",{itermid:ExamTable[index].itermid},((parseInt(ExamTable[index].final_price)/100000+0.01).toString()+' GXC'),true)
+
+                 })
+
+                        },
+
+
+
+
+                    pay(index,row){
+                        let client=GXClientFactory.instance({keyProvider:cookie.private_key,account:cookie.account_name,network:"wss://testnet.gxchain.org"});
+                        console.log("test:",this.tableData[index].itermid,row.buy);
+                        var deposit_num=(0.1*row.buy*(100-credit)/100+0.03).toString()+' GXC'
+                        client.callContract(contractName, "newprice", {itermid:this.tableData[index].itermid,amount:row.buy},deposit_num, broadcast)
+                        },
+
+
+
+                    finish()
+                    {
+
+                        let client=GXClientFactory.instance({keyProvider:cookie.private_key,account:cookie.account_name,network:"wss://testnet.gxchain.org"});
+                        client.callContract(contractName, "submitgood", {encrpted_goods:"ABCDEFG USTCBANZAI",itermid:sell_Itermid},null, broadcast)
+                        client.callContract(contractName,'withdraw',{itermid:sell_Itermid},null,true)
+                            }
 
                     }
             }
