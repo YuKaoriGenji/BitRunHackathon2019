@@ -46,6 +46,7 @@
                  <el-input v-model="scope.row.buy" placeholder="请输入内容" size="mini"></el-input>
                     <el-button @click=pay(scope.$index,scope.row) type="danger" icon="el-icon-delete" size="mini">出价</el-button>
                     <el-button @click=transac(scope.$index,scope.row) type="danger" icon="el-icon-delete" size="mini">付款</el-button>
+        <el-button @click=finish(scope.$index,scope.row) type="danger" size="mini" round>交货与收款</el-button>
                 </template>
             </el-table-column>
         </el-table>
@@ -57,9 +58,6 @@
             <el-button @click=display() type="sell" icon="el-icon-circle-plus-outline" size="mini" round>出售</el-button>
         </el-col>
         <!--全删按钮-->
-        <el-col:span="1" class="grid">
-        <el-button @click=finish() type="transaction" size="mini" round>交货与收款</el-button>
-        </el-col>
         <br>
         <!--分页条-->
         <el-pagination background layout="prev, pager, next" :total="1000">
@@ -124,7 +122,6 @@ var examItem=new Array();
                 var router=this.$router;
                 var broadcast=true;
                 cookie=this.$cookies.get('User');
-                sell_Itermid=this.$cookies.get('Sell');
                 console.log(cookie);
                 console.log(cookie.account_name);
                 console.log(cookie.private_key);
@@ -134,7 +131,7 @@ var examItem=new Array();
                     // router.push({path:'/',name:'Login'})
 
                     }
-                client.getTableObjects("auction8", "pubiterm").then(result=>{console.log("result:",result)
+                client.getTableObjects(contractName, "pubiterm").then(result=>{console.log("result:",result)
                     for(var i=0;result[i]!=null;i++)
                     {
                         arrItem[i]=result[i]
@@ -156,7 +153,7 @@ var examItem=new Array();
                         });
                     console.log("arrItem:",arrItem);
 
-                    client.getTableObjects("auction8","personlist").then(people=>{console.log("person",people)
+                    client.getTableObjects(contractName,"personlist").then(people=>{console.log("person",people)
                         var id_tmp=parseInt(account_ID.substr(4,4))
                         for(var i=0;people[i]!=null;i++)
                         {
@@ -205,20 +202,15 @@ var examItem=new Array();
 
 
                     display(){console.log("test23:",this.sell,this.name)
+                        var i=0;
                         let client=GXClientFactory.instance({keyProvider:cookie.private_key,account:cookie.account_name,network:"wss://testnet.gxchain.org"});
                         console.log(cookie.private_key);
                         client.callContract(contractName,"verifyseller",{min_price:this.sell,name:this.name,discreption:"123123123"},null,true).then(seller=>{console.log("seller:",seller);
-                        client.getTableObjects("auction8", "pubiterm").then(result=>{console.log("result:",result)
+                        client.getTableObjects(contractName, "pubiterm").then(result=>{console.log("result:",result)
 
-                        for(var i=0;result[i]!=null;i++){
-                            if(result[i].name==this.name){
-                                sell_Itermid=result[i].itermid;
-                                console.log('sell_Itermid');
-                                break;
-                                }
-                            this.$cookies.set('Sell',{sell_Itermid});
+                        for(i=0;result[i]!=null;i++){
                             }//得到itermid
-                        client.callContract(contractName,"paydeposit",{itermid:sell_Itermid},"1 GXC",broadcast)//支付押金
+                        client.callContract(contractName,"paydeposit",{itermid:result[i-1].itermid},"1 GXC",broadcast)//支付押金
                        })
                         } )
                         },
@@ -230,7 +222,7 @@ var examItem=new Array();
 
                     	 let client=GXClientFactory.instance({keyProvider:cookie.private_key,account:cookie.account_name,network:"wss://testnet.gxchain.org"});
 
-			 client.getTableObjects("auction8", "pubiterm").then(result=>{console.log("result:",result)
+			 client.getTableObjects(contractName, "pubiterm").then(result=>{console.log("result:",result)
                  for(var i=0;result[i]!=null;i++){
                      ItemList[i]=result[i]
                         ExamTable[i%5]=ItemList[i]
@@ -238,7 +230,7 @@ var examItem=new Array();
                      }
                  var money=(parseInt(ExamTable[index].final_price)/100000+0.01).toString()+" GXC"
                      console.log("money:",money)
-                 client.callContract(contractName,"submitmoney",{itermid:ExamTable[index].itermid},((parseInt(ExamTable[index].final_price)/100000+0.01).toString()+' GXC'),true)
+                 client.callContract(contractName,"submitmoney",{itermid:ExamTable[index].itermid},((parseInt(ExamTable[index].final_price)/100000).toString()+' GXC'),true)
 
                  })
 
@@ -251,17 +243,32 @@ var examItem=new Array();
                         let client=GXClientFactory.instance({keyProvider:cookie.private_key,account:cookie.account_name,network:"wss://testnet.gxchain.org"});
                         console.log("test:",this.tableData[index].itermid,row.buy);
                         var deposit_num=(0.1*row.buy*(100-credit)/100+0.03).toString()+' GXC'
+                        console.log(deposit_num)
                         client.callContract(contractName, "newprice", {itermid:this.tableData[index].itermid,amount:row.buy},deposit_num, broadcast)
                         },
 
 
 
-                    finish()
+                    finish(index,row)
                     {
+                            var ItemList=new Array();
+                            var ExamTable=new Array();
 
                         let client=GXClientFactory.instance({keyProvider:cookie.private_key,account:cookie.account_name,network:"wss://testnet.gxchain.org"});
-                        client.callContract(contractName, "submitgood", {encrpted_goods:"ABCDEFG USTCBANZAI",itermid:sell_Itermid},null, broadcast)
-                        client.callContract(contractName,'withdraw',{itermid:sell_Itermid},null,true)
+                        console.log('sell_:',sell_Itermid);
+
+			 client.getTableObjects(contractName, "pubiterm").then(result=>{console.log("result:",result)
+                	 for(var i=0;result[i]!=null;i++){
+               	      ItemList[i]=result[i]
+               	         ExamTable[i%5]=ItemList[i]
+                         console.log("finishtable:",ExamTable[i]);
+
+                     }
+                     client.callContract(contractName,"submitgood",{encrpted_goods:"9102Bitrun USTC",itermid:ExamTable[index].itermid},null,true)
+                     client.callContract(contractName,'withdraw',{itermid:ExamTable[index].itermid},null,true)
+
+                 })
+
                             }
 
                     }
